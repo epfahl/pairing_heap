@@ -3,8 +3,9 @@ Elixir implementation of a
 
 ## Background
 
-A heap is a tree data structure that efficiently maintains the order of its
-contents. The heap was first introduced in the context of efficient sorting 
+A heap is a tree data structure that ensures that the root always has the 
+minimum or maximum key value, depending on the desired sort order. The heap was 
+first introduced in the context of efficient sorting 
 (see [_heapsort_](https://en.wikipedia.org/wiki/Heapsort)), but it can also be 
 used to implement a 
 [priority queue](https://en.wikipedia.org/wiki/Priority_queue).  
