@@ -1,3 +1,7 @@
+[![Hex.pm Version](https://img.shields.io/hexpm/v/pairing_heap.svg)](https://hex.pm/packages/pairing_heap)
+
+<!-- END HEADER -->
+
 Elixir implementation of a
 [_pairing heap_](https://en.wikipedia.org/wiki/Pairing_heap).
 
@@ -22,7 +26,7 @@ has excellent performance characteristics, with `O(1)` time complexity for an
 insert and for viewing the root node, and `O(log n)` amortized time complexity 
 for removing the root node and rebuilding the heap. The algorithms for 
 maintaining a pairing heap have especially simple implementations in a
-functional language, which is one reason for doing this in Elixir. 
+functional language, which is one reason for doing this in Elixir.
 
 ## Usage
 
@@ -42,12 +46,12 @@ An empty heap is indicated with `root: :empty`.
 > The `PairingHeap` struct is not intended to be used directly. Use the 
 > public API when working with an instance of `PairingHeap`.
 
-The data contained in each node of a heap is a key-item pair expressed as the 
-tuple `{key, item}`. A `key` is what is being ordered in the heap, while the 
-`item` can be data of any type. Note that a heap is a not a set; duplicate 
-keys, items, and key-items pairs can be present.
+The data contained in each node of a heap is a key-value pair expressed as the 
+tuple `{key, value}`. A `key` is what is being ordered in the heap, while the 
+`value` can be data of any type. Note that a heap is a not a set; duplicate 
+keys, values, and key-value pairs can be present.
 
-Multiple key-item pairs can be added to a heap at the time of creation with 
+Multiple key-value pairs can be added to a heap at the time of creation with 
 `PairingHeap.new/2`:
 
 ```elixir
@@ -70,14 +74,14 @@ iex> PairingHeap.new({:min, Date}, [{~D[2023-09-01], :b}, {~D[2023-08-01], :a}])
 #PairingHeap<root: {~D[2023-08-01], :a}, size: 2, mode: {:min, Date}>
 ```
 
-To add a single key-item pair to a heap, use `PairingHeap.put/3`:
+To add a single key-value pair to a heap, use `PairingHeap.put/3`:
 
 ```eliixr
 iex> PairingHeap.new(:min) |> PairingHeap.put(1, :a)
 #PairingHeap<root: {1, :a}, size: 1, mode: :min>
 ```
 
-`PairingHeap.peek/1` is used to obtained the key-item pair of the root without
+`PairingHeap.peek/1` is used to obtained the key-value pair of the root without
 modifying the heap:
 
 ```elixir
@@ -88,10 +92,10 @@ iex> PairingHeap.new(:min, [{1, :a}]) |> PairingHeap.peek()
 Extraction and removal of the root node is accomplished with `PairingHeap.pop/1`:
 
 ```elixir
-iex> {:ok, {key, item}, heap} = 
+iex> {:ok, {key, value}, heap} = 
 ...>   PairingHeap.new(:min, [{1, :a}]) 
 ...>   |> PairingHeap.pop()
-iex> {key, item}
+iex> {key, value}
 {1, :a}
 iex> heap
 #PairingHeap<root: :empty, size: 0, mode: :min>
@@ -100,21 +104,21 @@ iex> heap
 Both `PairingHeap.peek/1` and `PairingHeap.pop/1` return `:error` if the
 heap is empty.
 
-`PairingHeap.pull/2` pops zero or more items from the heap and returns the 
-updated heap:
+`PairingHeap.pull/2` pops zero or more key-value pairs from the heap and returns 
+the updated heap:
 
 ```elixir
-iex> {items, heap} =
+iex> {pairs, heap} =
 ...>   PairingHeap.new(:min, [{3, :c}, {1, :a}, {2, :b}])
 ...>   |> PairingHeap.pull(2)
-iex> items
+iex> pairs
 [{1, :a}, {2, :b}]
 iex> heap
 #PairingHeap<root: {3, :c}, size: 1, mode: :min>
 ```
 
 If the number in `PairingHeap.pull/2` is greater than the heap size, all of the 
-key-item pairs are returned, along with an empty heap.
+key-value pairs are returned, along with an empty heap.
 
 Two heaps with the same `mode` can be merged with `PairingHeap.merge/2`:
 
@@ -140,7 +144,7 @@ iex> PairingHeap.merge([heap1, heap2])
 `PairingHeap` implements the `Enumerable` and `Collectable` protocols, meaning
 that functions from `Enum` and `Stream` are available. 
 
-`Enum.into` is a simple way to add a batch of key-item pairs to a heap:
+`Enum.into` is a simple way to add a batch of key-value pairs to a heap:
 
 ```elixir
 iex> heap = PairingHeap.new(:min, [{2, :b}])
@@ -160,3 +164,21 @@ iex> heap |> Enum.to_list()
 
 > Any operation that pops `k` elements from a heap will have `O(k log n)`
 > complexity on average.
+
+## Miscellaneous details
+
+- Like most other heap algorithms, a pairing heap does not produce a 
+[stable sort](https://en.wikipedia.org/wiki/Sorting_algorithm#Stability). 
+
+- In this implementation of a pairing heap, a new item whose key equals the key
+  of the root node will become the new root node.
+
+```elixir
+iex> heap = PairingHeap.new(:min, [{2, :b}, {1, :a}])
+iex> heap |> PairingHeap.put(1, :aa) |> Enum.to_list()
+[{1, :aa}, {1, :a}, {2, :b}]
+```
+
+- Emptying a `PairingHeap` with 1,000,000 randomly inserted items takes a 
+  couple seconds. For `PairingHeap` sizes less than 1,000,000 the time to 
+  pop an item is of order 1 microsecond.
