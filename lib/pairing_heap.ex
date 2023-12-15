@@ -1,7 +1,11 @@
 defmodule PairingHeap do
   @readme "README.md"
   @external_resource @readme
-  @moduledoc_readme @readme |> File.read!()
+  @moduledoc_readme @readme
+                    |> File.read!()
+                    |> String.split("<!-- END HEADER -->")
+                    |> Enum.fetch!(1)
+                    |> String.trim()
 
   @moduledoc """
   #{@moduledoc_readme}
@@ -12,8 +16,8 @@ defmodule PairingHeap do
   alias PairingHeap.Node
 
   @type key :: any
-  @type item :: any
-  @type pair :: {key, item}
+  @type value :: any
+  @type pair :: {key, value}
   @type mode :: :min | :max | {:min, module} | {:max, module}
 
   @type t :: %PairingHeap{
@@ -49,10 +53,10 @@ defmodule PairingHeap do
   end
 
   @doc """
-  Return a heap with the given `mode` and insert each key-item pair in the
+  Return a heap with the given `mode` and insert each key-value pair in the
   given `list`.
 
-  The `mode` can be one
+  The `mode` can be one of
 
     * `:min` - a _min-heap_, where keys are compared with `&<=/2`
     * `:max` - a _max-heap_, where keys are compared with `&>=/2`
@@ -68,8 +72,8 @@ defmodule PairingHeap do
   def new(mode, []), do: new(mode)
 
   def new(mode, [{_, _} | _] = list) do
-    Enum.reduce(list, new(mode), fn {key, item}, heap ->
-      put(heap, key, item)
+    Enum.reduce(list, new(mode), fn {key, value}, heap ->
+      put(heap, key, value)
     end)
   end
 
@@ -103,38 +107,38 @@ defmodule PairingHeap do
       true
   """
   @spec empty?(t) :: boolean
-  def empty?(%PairingHeap{root: :empty}), do: true
-  def empty?(%PairingHeap{root: %PairingHeap.Node{}}), do: false
+  def empty?(%PairingHeap{root: :empty} = _heap), do: true
+  def empty?(%PairingHeap{root: %PairingHeap.Node{}} = _heap), do: false
 
   @doc """
-  Insert a new key and item to the heap and return the updated heap.
+  Insert a new key and value to the heap and return the updated heap.
 
   ## Examples
 
       iex> PairingHeap.new(:min) |> PairingHeap.put(1, :a)
       #PairingHeap<root: {1, :a}, size: 1, mode: :min>
   """
-  @spec put(t, key, item) :: t
-  def put(%PairingHeap{root: :empty, size: 0} = heap, key, item) do
-    %{heap | root: Node.new({key, item}, []), size: 1}
+  @spec put(t, key, value) :: t
+  def put(%PairingHeap{root: :empty, size: 0} = heap, key, value) do
+    %{heap | root: Node.new({key, value}, []), size: 1}
   end
 
   def put(
         %PairingHeap{root: %Node{} = node, size: size, ordered?: ordered?} = heap,
         key,
-        item
+        value
       ) do
     %{
       heap
-      | root: Node.merge(node, Node.new({key, item}, []), ordered?),
+      | root: Node.merge(Node.new({key, value}, []), node, ordered?),
         size: size + 1
     }
   end
 
   @doc """
-  Return the root key-item pair in the heap without modifying the heap.
+  Return the root key-value pair in the heap without modifying the heap.
 
-  If the heap is non-empty, this returns `{:ok, {key, item}}`. If the heap is empty,
+  If the heap is non-empty, this returns `{:ok, {key, value}}`. If the heap is empty,
   `:error` is returned.
 
   ## Examples
@@ -143,22 +147,22 @@ defmodule PairingHeap do
       {:ok, {1, :a}}
   """
   @spec peek(t) :: {:ok, pair} | :error
-  def peek(%PairingHeap{root: :empty}), do: :error
-  def peek(%PairingHeap{root: %Node{data: {key, item}}}), do: {:ok, {key, item}}
+  def peek(%PairingHeap{root: :empty} = _heap), do: :error
+  def peek(%PairingHeap{root: %Node{data: {key, value}}} = _heap), do: {:ok, {key, value}}
 
   @doc """
-  Return the root key-item pair in the heap, as well as the updated heap after
+  Return the root key-value pair in the heap, as well as the updated heap after
   the root is removed.
 
-  If the heap is non-empty, this returns `{:ok, {key, item}, heap}`. If the heap
+  If the heap is non-empty, this returns `{:ok, {key, value}, heap}`. If the heap
   is empty, `:error` is returned.
 
   ## Examples
 
-      iex> {:ok, {key, item}, heap} =
+      iex> {:ok, {key, value}, heap} =
       ...>   PairingHeap.new(:min, [{1, :a}])
       ...>   |> PairingHeap.pop()
-      iex> {key, item}
+      iex> {key, value}
       {1, :a}
       iex> heap
       #PairingHeap<root: :empty, size: 0, mode: :min>
@@ -168,7 +172,7 @@ defmodule PairingHeap do
 
   def pop(
         %PairingHeap{
-          root: %Node{data: {key, item}, children: children},
+          root: %Node{data: {key, value}, children: children},
           size: size,
           ordered?: ordered?
         } = heap
@@ -179,7 +183,7 @@ defmodule PairingHeap do
         [_ | _] -> %{heap | root: Node.merge(children, ordered?), size: size - 1}
       end
 
-    {:ok, {key, item}, heap}
+    {:ok, {key, value}, heap}
   end
 
   @doc """
@@ -191,20 +195,20 @@ defmodule PairingHeap do
       1
   """
   @spec size(t) :: non_neg_integer()
-  def size(%PairingHeap{size: size}), do: size
+  def size(%PairingHeap{size: size} = _heap), do: size
 
   @doc """
-  Return the first `n` key-item pairs from the heap and the final state of the heap.
+  Return the first `n` key-value pairs from the heap and the final state of the heap.
 
-  If the heap `size` is less than `n`, all key-item pairs are returned, along with
+  If the heap `size` is less than `n`, all key-value pairs are returned along with
   an empty heap.
 
   ## Examples
 
-      iex> {items, heap} =
+      iex> {pairs, heap} =
       ...>   PairingHeap.new(:min, [{3, :c}, {1, :a}, {2, :b}])
       ...>   |> PairingHeap.pull(2)
-      iex> items
+      iex> pairs
       [{1, :a}, {2, :b}]
       iex> heap
       #PairingHeap<root: {3, :c}, size: 1, mode: :min>
@@ -219,8 +223,8 @@ defmodule PairingHeap do
 
   defp pull(%PairingHeap{} = heap, n, acc) do
     case pop(heap) do
-      {:ok, {key, item}, heap} ->
-        pull(heap, n - 1, [{key, item} | acc])
+      {:ok, {key, value}, heap} ->
+        pull(heap, n - 1, [{key, value} | acc])
 
       :error ->
         {acc, heap}
@@ -271,12 +275,12 @@ defmodule PairingHeap do
       #PairingHeap<root: {1, :a}, size: 2, mode: :min>
   """
   @spec merge([t]) :: t
-  def merge([heap]), do: heap
+  def merge([heap] = _heaps), do: heap
   def merge([heap1, heap2]), do: merge(heap1, heap2)
   def merge([heap1, heap2 | rest]), do: merge(merge(heap1, heap2), merge(rest))
 
   @doc """
-  Retrun `true` if the `heap` contains the key-item `pair`, and `false`
+  Retrun `true` if the `heap` contains the key-value `pair`, and `false`
   otherwise.
 
   ## Examples
@@ -286,9 +290,12 @@ defmodule PairingHeap do
       true
   """
   @spec member?(t, pair) :: boolean
-  def member?(%PairingHeap{root: :empty}, _pair), do: false
+  def member?(%PairingHeap{root: :empty} = _heap, _pair), do: false
 
-  def member?(%PairingHeap{root: %Node{} = node, ordered?: ordered?}, {_, _} = pair) do
+  def member?(
+        %PairingHeap{root: %Node{} = node, ordered?: ordered?} = _heap,
+        {_, _} = pair
+      ) do
     Node.member?(node, pair, ordered?)
   end
 end
